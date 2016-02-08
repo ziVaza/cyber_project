@@ -1,0 +1,279 @@
+    public void ReceiveMessage(IAsyncResult ar)        public void ReceiveMessage(IAsyncResult ar)
+        {
+            int bytesRead;
+            try
+            {
+                lock (_client.GetStream())
+                {
+                    // call EndRead to handle the end of an async read.
+                    bytesRead = _client.GetStream().EndRead(ar);
+                }
+                // if bytesread<1 -> the client disconnected
+                if (bytesRead < 1)
+                {
+                    // remove the client from out list of clients
+                    //AllClients.Remove(_clientIP);
+                    // tell everyone the client left the chat.
+                    //Broadcast(_ClientNick + " has left the chat.");
+                    return;
+                }
+                else // client still connected
+                {
+                    if (!flag)
+                    {
+                        string messageReceived = System.Text.Encoding.ASCII.GetString(data, 0, bytesRead);
+                        // if the client is sending its nickname
+
+                        username = messageReceived.Split(';')[0];
+                        password = messageReceived.Split(';')[1];
+
+                        if (sql.UserExist(username, password))
+                        {
+                            Broadcast(username + " Has Logged");
+                            Broadcast("OK");
+                            
+                                flag = true;
+                            
+                        }
+
+                        else
+                        {
+                            Broadcast("Wrong Username or Password");
+                        }
+
+                        //if (log[0] != null && log[1] == null)
+                        //{
+                        //    log[1] = messageReceived;
+                        //    if (sql.UserExist(log[0], log[1]))
+                        //    {
+                        //        Broadcast("OK");
+                        //    }
+                        //    else
+                        //    {
+                        //        Makenull(log);
+                        //        Broadcast("Wrong Username or Password");
+                        //    }
+                        //}
+
+                        //if (log[0] == null)
+                        //{
+                        //    log[0] = messageReceived;
+                        //}
+
+
+                        // send message to everyone
+                        //Broadcast(messageReceived);
+                    }
+                    else
+                    {
+                        
+                        StreamReader reader = new StreamReader(_client.GetStream());
+
+                        // The first message from the client is the file size    
+                        string cmdFileSize = reader.ReadLine();
+
+                        // The first message from the client is the filename    
+                        string cmdFileName = reader.ReadLine();
+
+                        int length = cmdFileSize.Length;
+                        byte[] buffer = new byte[length];
+                        int received = 0;
+                        int read = 0;
+                        int size = 1024;
+                        int remaining = 0;
+                        string[] name1 = cmdFileName.Split('\\');
+                        string nuName1 = name1[name1.Length - 1];
+
+                        // Read bytes from the client using the length sent from the client    
+                        while (received < length)
+                        {
+                            remaining = length - received;
+                            if (remaining < size)
+                            {
+                                size = remaining;
+                            }
+
+                            read = _client.GetStream().Read(buffer, received, size);
+                            received += read;
+                        }
+                        if (cmdFileName.Contains(":\\"))
+                        {
+                            bool isExistFile = true;
+                            string filepath = Environment.CurrentDirectory + "\\" + username;
+                            DirectoryInfo d = new DirectoryInfo(filepath);
+
+                            foreach (var file in d.GetFiles("*.txt"))
+                            {
+                                //Directory.Move(file.FullName, filepath + "\\TextFiles\\" + file.Name);
+                                if (nuName1 == file.Name)
+                                {
+                                    isExistFile = false;
+                                }
+                            }
+                            if (isExistFile == false)
+                            {
+                                Broadcast("FileAlreadyExists");
+                            }
+                            if (isExistFile) 
+                                {
+                                using (FileStream fStream = new FileStream(Path.GetFileName(cmdFileName), FileMode.Create))
+                                {
+                                    //Console.WriteLine("kotev takovetz");
+                                    fStream.Write(buffer, 0, buffer.Length);
+                                    fStream.Flush();
+                                    fStream.Close();
+                                }
+                                // Console.WriteLine(cmdFileName);
+
+                                byte[] bytes = Encoding.Default.GetBytes(cmdFileName);
+                                cmdFileName = Encoding.UTF8.GetString(bytes);
+                                Console.WriteLine(cmdFileName + " Recieved and Saved");
+                                //Console.WriteLine(Environment.CurrentDirectory);
+
+                                string[] name = cmdFileName.Split('\\');
+                                string nuName = name[name.Length - 1];
+
+                                //Console.WriteLine(nuName);
+
+                                Directory.CreateDirectory(Environment.CurrentDirectory + "\\" + username);
+
+                                //int n = 3;
+                                //for (int i = 1; i < n; i++)
+                                //{
+                                string from = Environment.CurrentDirectory + "\\" + nuName;
+                                string to = Environment.CurrentDirectory + "\\" + username + "\\" + nuName;
+                                {
+                                    try
+                                    {
+                                        File.Move(from, to); // Try to move
+                                        Console.WriteLine("Moved To " + username + " Folder"); // Success
+                                    }
+                                    catch (System.IO.FileNotFoundException e)
+                                    {
+                                        Console.WriteLine(e); // Write error
+                                    }
+                                }
+                                isExistFile = false;
+                            }
+                        }
+                        // Save the file using the filename sent by the client    
+                       // using (FileStream fStream = new FileStream(Path.GetFileName(cmdFileName), FileMode.Create))
+                       // {
+                       //     fStream.Write(buffer, 0, buffer.Length);
+                       //     fStream.Flush();
+                       //     fStream.Close();
+                       // }
+                       //// Console.WriteLine(cmdFileName);
+                  
+                       // byte[] bytes = Encoding.Default.GetBytes(cmdFileName);
+                       // cmdFileName = Encoding.UTF8.GetString(bytes);
+                       // Console.WriteLine(cmdFileName + " Recieved and Saved");
+                       // //Console.WriteLine(Environment.CurrentDirectory);
+
+                       // string[] name = cmdFileName.Split('\\');
+                       // string nuName = name[name.Length - 1];
+
+                       // //Console.WriteLine(nuName);
+
+                       // Directory.CreateDirectory(Environment.CurrentDirectory + "\\" + username);
+
+                       // //int n = 3;
+                       // //for (int i = 1; i < n; i++)
+                       // //{
+                       // string from = Environment.CurrentDirectory + "\\" + nuName;
+                       // string to = Environment.CurrentDirectory + "\\" + username + "\\" + nuName;
+                       // {
+                       //     try
+                       //     {
+                       //         File.Move(from, to); // Try to move
+                       //         Console.WriteLine("Moved To " + username + " Folder"); // Success
+                       //     }
+                       //     catch (System.IO.FileNotFoundException e)
+                       //     {
+                       //         Console.WriteLine(e); // Write error
+                       //     }
+                       // }
+                    }
+                }
+                //}
+                lock (_client.GetStream())
+                {
+                    // continue reading form the client
+                    _client.GetStream().BeginRead(data, 0, System.Convert.ToInt32(_client.ReceiveBufferSize), ReceiveMessage, null);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Pug");
+            }
+        }
+
+        /// <summary>
+        /// send message to all the clients that are stored in the allclients hashtable
+        /// </summary>
+        /// <param name="message"></param>
+        public void Broadcast(string message)
+        {
+            Console.WriteLine(message);
+            SendMessage(message + Environment.NewLine);
+
+        }
+
+        public void ReceiveFile(IAsyncResult ar)
+        {
+            try
+            {
+                lock (_client.GetStream())
+                {
+                    StreamReader reader = new StreamReader(_client.GetStream());
+
+                    // The first message from the client is the file size    
+                    string cmdFileSize = reader.ReadLine();
+
+                    // The first message from the client is the filename    
+                    string cmdFileName = reader.ReadLine();
+
+                    int length = cmdFileSize.Length;
+                    byte[] buffer = new byte[length];
+                    int received = 0;
+                    int read = 0;
+                    int size = 1024;
+                    int remaining = 0;
+
+                    // Read bytes from the client using the length sent from the client    
+                    while (received < length)
+                    {
+                        remaining = length - received;
+                        if (remaining < size)
+                        {
+                            size = remaining;
+                        }
+
+                        read = _client.GetStream().Read(buffer, received, size);
+                        received += read;
+                    }
+
+                    // Save the file using the filename sent by the client    
+                    using (FileStream fStream = new FileStream(Path.GetFileName(cmdFileName), FileMode.Create))
+                    {
+                        fStream.Write(buffer, 0, buffer.Length);
+                        fStream.Flush();
+                        fStream.Close();
+                    }
+
+                    Console.WriteLine("File received and saved in " + Environment.CurrentDirectory);
+                }
+                lock (_client.GetStream())
+                {
+                    // continue reading form the client
+                    _client.GetStream().BeginRead(data, 0, System.Convert.ToInt32(_client.ReceiveBufferSize), ReceiveMessage, null);
+                }
+            }
+            catch (Exception ex)
+            {
+                return;
+            }
+
+        }
+
+    }
